@@ -73,37 +73,52 @@
     .rc-meta p { font-size: 12px; color: var(--muted); margin-top: 3px; line-height: 1.6; }
     .rc-meta .scope-pill { display: inline-block; margin-top: 6px; font-size: 11px; background: #161b22; border: 1px solid var(--border); border-radius: 4px; padding: 2px 8px; color: var(--muted); }
 
-    .phase-section { margin-bottom: 18px; }
-    .phase-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 8px; padding-left: 2px; }
+    /* ── Phase sections ── */
+    .phase-section { margin-bottom: 28px; }
+    .phase-label {
+      font-size: 18px; font-weight: 800; color: var(--text);
+      margin-bottom: 12px; margin-top: 8px; padding: 12px 16px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; display: flex; align-items: center; gap: 10px;
+      letter-spacing: -0.2px;
+    }
+    .phase-label .phase-icon { font-size: 20px; }
+    .phase-label .phase-count { margin-left: auto; font-size: 12px; font-weight: 500; color: var(--muted); }
     .fault-grid { display: grid; gap: 10px; }
 
     /* Graded card */
-    .fault-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; }
+    .fault-card { background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--border); border-radius: 10px; padding: 16px 18px; transition: border-color 0.15s; }
+    .fault-card.grade-A { border-left-color: #3fb950; }
+    .fault-card.grade-B { border-left-color: #7ee787; }
+    .fault-card.grade-C { border-left-color: #d29922; }
+    .fault-card.grade-D { border-left-color: #f85149; }
     .fc-top { display: flex; align-items: center; gap: 12px; }
-    .grade-dot { width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 900; }
-    .g-A { background: #0d2818; color: #3fb950; border: 2px solid #3fb95044; }
-    .g-B { background: #1a2608; color: #7ee787; border: 2px solid #7ee78744; }
-    .g-C { background: #2a1e00; color: #d29922; border: 2px solid #d2992244; }
-    .g-D { background: #2d0f0f; color: #f85149; border: 2px solid #f8514944; }
-    .fc-name { font-size: 14px; font-weight: 700; }
-    .fc-label { font-size: 12px; color: var(--muted); margin-top: 1px; }
-    .fc-body { font-size: 13px; color: #c9d1d9; line-height: 1.6; margin-top: 10px; }
-    .fc-measure { font-family: monospace; font-size: 11px; color: var(--blue); background: #0d1529; border: 1px solid #1c2d4d; border-radius: 4px; padding: 6px 10px; margin-top: 8px; display: block; }
+    .grade-dot { width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 900; }
+    .g-A { background: #0d2818; color: #3fb950; border: 2px solid #3fb95066; }
+    .g-B { background: #1a2608; color: #7ee787; border: 2px solid #7ee78766; }
+    .g-C { background: #2a1e00; color: #d29922; border: 2px solid #d2992266; }
+    .g-D { background: #2d0f0f; color: #f85149; border: 2px solid #f8514966; }
+    .fc-name { font-size: 15px; font-weight: 700; }
+    .fc-label { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .fc-body { font-size: 13px; color: #c9d1d9; line-height: 1.65; margin-top: 10px; }
+    .fc-advice { font-size: 13px; color: #8b949e; line-height: 1.65; margin-top: 6px; padding-top: 8px; border-top: 1px solid var(--border); }
+    .fc-measure { font-family: monospace; font-size: 11px; color: var(--blue); background: #0d1529; border: 1px solid #1c2d4d; border-radius: 4px; padding: 6px 10px; margin-top: 10px; display: block; }
 
     /* Flag cards */
-    .flag-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 18px; opacity: 0.75; }
-    .flag-tag { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+    .flag-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 18px; opacity: 0.6; }
+    .flag-tag { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 5px; display: flex; align-items: center; gap: 5px; }
     .flag-club { color: var(--purple); }
     .flag-view { color: var(--blue); }
     .flag-quality { color: var(--yellow); }
-    .flag-card h4 { font-size: 13px; color: var(--text); }
+    .flag-card h4 { font-size: 13px; font-weight: 600; color: var(--text); }
     .flag-card p { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
 
     /* Prescribed fix */
-    .fix-card { background: #0d2818; border: 1px solid #2ea04333; border-radius: 10px; padding: 20px; margin-top: 18px; }
-    .fix-card h3 { color: var(--green); font-size: 15px; font-weight: 700; margin-bottom: 8px; }
-    .fix-card .fault-name { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
-    .fix-card .drill { font-size: 13px; color: #a5d6a7; line-height: 1.7; margin-top: 8px; background: #09200f; border-radius: 6px; padding: 12px; }
+    .fix-card { background: #0d2818; border: 1px solid #2ea04344; border-radius: 10px; padding: 22px; margin-top: 18px; }
+    .fix-card h3 { color: var(--green); font-size: 17px; font-weight: 800; margin-bottom: 6px; }
+    .fix-card .fault-name { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+    .fix-card .fix-sub { font-size: 13px; color: #8b949e; margin-bottom: 12px; }
+    .fix-card .drill { font-size: 14px; color: #a5d6a7; line-height: 1.75; background: #09200f; border-radius: 8px; padding: 14px 16px; border-left: 3px solid var(--green); }
 
     /* Phase debug */
     .phase-debug { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-top: 18px; }
@@ -115,17 +130,26 @@
     .pi-sub { font-size: 10px; color: var(--muted); }
 
     /* Summary bar */
-    .summary-bar { display: flex; gap: 8px; margin-top: 18px; flex-wrap: wrap; }
-    .sb-item { flex: 1; min-width: 70px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px; text-align: center; }
+    .summary-bar { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+    .sb-item { flex: 1; min-width: 70px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 10px; text-align: center; }
     .sb-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
-    .sb-value { font-size: 22px; font-weight: 900; margin-top: 2px; }
+    .sb-value { font-size: 26px; font-weight: 900; margin-top: 2px; }
+    .sb-item.overall { background: #0d2818; border-color: #2ea04333; }
 
     /* Action buttons */
-    .action-row { display: flex; gap: 10px; margin-top: 18px; }
-    .btn-secondary { flex: 1; padding: 13px; background: transparent; color: var(--green); border: 2px solid var(--green); border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; }
-    .btn-export { flex: 1; padding: 13px; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
+    .action-row { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+    .btn-secondary { flex: 1; min-width: 140px; padding: 14px; background: transparent; color: var(--green); border: 2px solid var(--green); border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; }
+    .btn-export { flex: 1; min-width: 140px; padding: 14px; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
 
-    .disclaimer { font-size: 11px; color: #484f58; text-align: center; margin-top: 24px; line-height: 1.7; }
+    .disclaimer { font-size: 11px; color: #484f58; text-align: center; margin-top: 28px; line-height: 1.8; }
+
+    @media (max-width: 600px) {
+      header { flex-wrap: wrap; gap: 6px; }
+      .badge:last-of-type { display: none; }
+      .phase-label { font-size: 15px; padding: 10px 12px; }
+      .phase-row { grid-template-columns: repeat(3, 1fr); }
+      .rc-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+    }
   </style>
 </head>
 <body>
@@ -286,18 +310,30 @@ function loadVideo(file) {
 }
 
 // ─── Pose extraction ──────────────────────────────────────────────────────────
+// Uses real-time playback + requestAnimationFrame instead of frame-seeking,
+// which is unreliable on iOS Safari and many Android browsers.
 function startPoseExtraction(video) {
   const canvas = document.getElementById('poseCanvas');
   const ctx = canvas.getContext('2d');
   const duration = video.duration;
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   let frameIdx = 0;
+  let lastCapturedTime = -1;
+  let poseReady = false;
+  let loopRunning = false;
+  const CAPTURE_INTERVAL = isMobile ? 1/15 : 1/24; // 15fps mobile, 24fps desktop
   setStep(3);
 
   const pose = new Pose({
     locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${f}`
   });
-  pose.setOptions({ modelComplexity: 1, smoothLandmarks: true,
-    enableSegmentation: false, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+  pose.setOptions({
+    modelComplexity: isMobile ? 0 : 1,  // lighter model on mobile
+    smoothLandmarks: true,
+    enableSegmentation: false,
+    minDetectionConfidence: 0.5,
+    minTrackingConfidence: 0.5
+  });
 
   pose.onResults(results => {
     canvas.width = video.videoWidth || 640;
@@ -310,21 +346,41 @@ function startPoseExtraction(video) {
         landmarks: results.poseLandmarks.map(lm => ({ x: lm.x, y: lm.y, z: lm.z, v: lm.visibility }))
       });
     }
-    const pct = Math.min(98, Math.round((video.currentTime / duration) * 95));
-    setProgress(pct);
+    setProgress(Math.min(98, Math.round((video.currentTime / duration) * 95)));
     frameIdx++;
-    if (video.currentTime < duration - 0.04) {
-      video.currentTime += 1 / 30;
-    } else {
-      finishExtraction();
-    }
+    poseReady = true;
   });
 
-  video.pause();
-  video.currentTime = 0;
-  video.onseeked = async () => { await pose.send({ image: video }); };
-  video.currentTime = 0.001;
-  log('Extracting keypoints from ' + Math.round(duration) + 's video at ~30fps…');
+  // Warm up the model before starting playback
+  pose.initialize().then(() => {
+    log('Extracting keypoints from ' + Math.round(duration) + 's video'
+      + (isMobile ? ' (mobile mode: 15fps, fast model)' : ' at ~24fps') + '…');
+    poseReady = true;
+
+    // Play at reduced speed so rAF can keep up on slow devices
+    video.playbackRate = isMobile ? 0.35 : 0.5;
+    video.play();
+
+    const loop = async () => {
+      if (video.ended || video.currentTime >= duration - 0.05) {
+        video.pause();
+        finishExtraction();
+        return;
+      }
+      if (poseReady && video.currentTime - lastCapturedTime >= CAPTURE_INTERVAL) {
+        poseReady = false;
+        lastCapturedTime = video.currentTime;
+        try { await pose.send({ image: video }); } catch(e) { poseReady = true; }
+      }
+      requestAnimationFrame(loop);
+    };
+    requestAnimationFrame(loop);
+  }).catch(err => {
+    log('MediaPipe failed to load: ' + err.message, 'err');
+    log('Check your internet connection and reload the page.', 'err');
+  });
+
+  log('Loading MediaPipe model' + (isMobile ? ' (mobile: fast model)' : '') + '…');
 }
 
 const SKELETON = [
@@ -753,44 +809,44 @@ const FAULT_META = {
   tempo:        { name:'Tempo Ratio', desc:'Backswing duration vs downswing duration (hand-derived)' },
 };
 const PHASES_LAYOUT = [
-  { label:'Setup',             keys:['bodyTilt','stanceWidth'] },
-  { label:'Backswing',         keys:['hipSlide','headSway','armWidth'] },
-  { label:'Downswing & Impact',keys:['weightShift','chestOpening','extension'] },
-  { label:'Tempo',             keys:['tempo'] },
+  { label:'Setup',              icon:'🧍', keys:['bodyTilt','stanceWidth'] },
+  { label:'Backswing',          icon:'🔄', keys:['hipSlide','headSway','armWidth'] },
+  { label:'Downswing & Impact', icon:'⚡', keys:['weightShift','chestOpening','extension'] },
+  { label:'Tempo',              icon:'⏱', keys:['tempo'] },
 ];
-// Out-of-scope face-on checkpoints (club-dependent)
-const OUT_OF_SCOPE = [
-  { name:'Ball Position',           reason:'Requires ball detection — out of scope v1', phase:'Setup', flag:'out_club' },
-  { name:'Lag / Casting',           reason:'Requires shaft tracking — out of scope v1', phase:'Downswing & Impact', flag:'out_club' },
-  { name:'Impact Shaft Lean',       reason:'Requires shaft tracking — out of scope v1', phase:'Downswing & Impact', flag:'out_club' },
+// Club-dependent checkpoints — shown as "Coming Soon"
+const COMING_SOON = [
+  { name:'Ball Position',    reason:'Ball detection coming in a future update', phase:'Setup' },
+  { name:'Lag / Casting',    reason:'Requires shaft tracking — coming in a future update', phase:'Downswing & Impact' },
+  { name:'Impact Shaft Lean',reason:'Requires shaft tracking — coming in a future update', phase:'Downswing & Impact' },
 ];
 
 function faultCardHTML(key, result) {
   const meta = FAULT_META[key];
   if (!result.grade) {
-    const tagClass = result.flag === 'low_input_quality' ? 'flag-quality' : 'flag-view';
-    const tagText  = result.flag === 'low_input_quality' ? '⚠ Couldn\'t Read From This Video' : '🔭 Not Visible From This View';
-    const tagColor = result.flag === 'low_input_quality' ? '#d29922' : '#58a6ff';
+    const isQuality = result.flag === 'low_input_quality';
+    const tagClass  = isQuality ? 'flag-quality' : 'flag-view';
+    const tagText   = isQuality ? '⚠ Couldn\'t Read From This Video' : '🔭 Not Visible From This View';
     return `<div class="flag-card">
       <div class="flag-tag ${tagClass}">${tagText}</div>
       <h4>${meta.name}</h4>
       <p>${result.detail || meta.desc}</p>
     </div>`;
   }
-  const gc = gradeColor(result.grade);
-  return `<div class="fault-card">
+  return `<div class="fault-card grade-${result.grade}">
     <div class="fc-top">
       <div class="grade-dot g-${result.grade}">${result.grade}</div>
       <div><div class="fc-name">${meta.name}</div><div class="fc-label">${meta.desc}</div></div>
     </div>
-    <div class="fc-body">${result.label}<br><span style="font-size:12px;color:#8b949e;">${result.advice}</span></div>
+    <div class="fc-body">${result.label}</div>
+    <div class="fc-advice">${result.advice}</div>
     ${result.measurement ? `<code class="fc-measure">${result.measurement}</code>` : ''}
   </div>`;
 }
 
-function outOfScopeHTML(item) {
+function comingSoonHTML(item) {
   return `<div class="flag-card">
-    <div class="flag-tag flag-club">🔧 Out of Scope — v1 Body-Only</div>
+    <div class="flag-tag flag-club">🔮 Coming Soon</div>
     <h4>${item.name}</h4>
     <p>${item.reason}</p>
   </div>`;
@@ -805,12 +861,17 @@ function renderReport(results, overall, worst, phases) {
   let phaseSections = '';
   PHASES_LAYOUT.forEach(ph => {
     const cards = ph.keys.map(k => faultCardHTML(k, results[k])).join('');
-    // Append out-of-scope items in the right phase
-    const oos = OUT_OF_SCOPE.filter(o => o.phase === ph.label).map(outOfScopeHTML).join('');
+    const cs    = COMING_SOON.filter(o => o.phase === ph.label).map(comingSoonHTML).join('');
+    const total = ph.keys.length + COMING_SOON.filter(o => o.phase === ph.label).length;
+    const graded = ph.keys.filter(k => results[k].grade).length;
     phaseSections += `
       <div class="phase-section">
-        <div class="phase-label">${ph.label}</div>
-        <div class="fault-grid">${cards}${oos}</div>
+        <div class="phase-label">
+          <span class="phase-icon">${ph.icon}</span>
+          ${ph.label}
+          <span class="phase-count">${graded}/${total} graded</span>
+        </div>
+        <div class="fault-grid">${cards}${cs}</div>
       </div>`;
   });
 
@@ -819,8 +880,8 @@ function renderReport(results, overall, worst, phases) {
   const counts = {A:0,B:0,C:0,D:0};
   gradedList.forEach(([,r])=>counts[r.grade]++);
   const summaryBar = ['A','B','C','D'].map(g =>
-    `<div class="sb-item"><div class="sb-label">${g}</div><div class="sb-value" style="color:${gradeColor(g)}">${counts[g]}</div></div>`
-  ).join('');
+    `<div class="sb-item"><div class="sb-label">Grade ${g}</div><div class="sb-value" style="color:${gradeColor(g)}">${counts[g]}</div></div>`
+  ).join('') + `<div class="sb-item overall"><div class="sb-label">Overall</div><div class="sb-value" style="color:${oc}">${overall||'—'}</div></div>`;
 
   // Prescribed fix
   let fixHTML = '';
@@ -829,28 +890,28 @@ function renderReport(results, overall, worst, phases) {
     fixHTML = `<div class="fix-card">
       <h3>🎯 Your One Thing to Work On</h3>
       <div class="fault-name">${FAULT_META[key].name} — Grade ${r.grade}</div>
-      <p style="font-size:13px;color:#8b949e;">This is your biggest opportunity this session. Work on this before re-testing.</p>
+      <div class="fix-sub">Focus on this before your next session. Don't chase everything at once.</div>
       <div class="drill">${r.advice}</div>
     </div>`;
   }
 
   document.getElementById('reportCard').innerHTML = `
     <div class="rc-header">
-      <div class="overall-badge" style="background:${oc}18;color:${oc};border:3px solid ${oc}44;">${overall||'?'}</div>
+      <div class="overall-badge" style="background:${oc}18;color:${oc};border:3px solid ${oc}55;">${overall||'?'}</div>
       <div class="rc-meta">
         <h2>Swing Report Card</h2>
-        <p>Face-on view · ${handedness === 'RH' ? 'Right-handed' : 'Left-handed'} · ${now} · ${n} frames analysed · ${gradedList.length} of 9 checkpoints graded</p>
-        <span class="scope-pill">Body mechanics only — no club, clubface, shaft-plane, or ball data in v1</span>
+        <p>Face-on · ${handedness === 'RH' ? 'Right-handed' : 'Left-handed'} · ${now} · ${n} frames · ${gradedList.length} of 9 checkpoints graded</p>
+        <span class="scope-pill">Body mechanics only — club &amp; ball data coming soon</span>
       </div>
     </div>
 
-    <div class="summary-bar">${summaryBar}<div class="sb-item" style="flex:2"><div class="sb-label">Overall</div><div class="sb-value" style="color:${oc}">${overall||'—'}</div></div></div>
+    <div class="summary-bar">${summaryBar}</div>
 
-    ${phaseSections}
     ${fixHTML}
+    ${phaseSections}
 
     <div class="phase-debug">
-      <h4>Phase Detection Debug</h4>
+      <h4>Phase Detection — Debug</h4>
       <div class="phase-row">
         <div class="phase-item"><div class="pi-label">Address</div><div class="pi-value">${phases.address}</div><div class="pi-sub">${(phases.address/n*100).toFixed(0)}% in</div></div>
         <div class="phase-item"><div class="pi-label">Top</div><div class="pi-value">${phases.top}</div><div class="pi-sub">${(phases.top/n*100).toFixed(0)}% in</div></div>
@@ -862,7 +923,7 @@ function renderReport(results, overall, worst, phases) {
 
     <div class="action-row">
       <button class="btn-secondary" onclick="retestSwing()">📹 Analyse Another Swing</button>
-      <button class="btn-export" onclick="exportReport()">📋 Copy Report to Clipboard</button>
+      <button class="btn-export" onclick="exportReport()">📋 Copy Report</button>
     </div>
   `;
   document.getElementById('reportCard').style.display = 'block';
