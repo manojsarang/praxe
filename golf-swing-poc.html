@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Golf Swing Coach — Analysis PoC v2</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0d1117; --surface: #161b22; --border: #30363d;
+      --text: #e6edf3; --muted: #8b949e; --green: #3fb950; --blue: #58a6ff;
+      --yellow: #d29922; --red: #f85149; --purple: #bc8cff;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* ── Header ── */
+    header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex; align-items: center; gap: 12px; }
+    .logo { font-size: 22px; font-weight: 800; color: var(--green); letter-spacing: -0.5px; }
+    .badge { font-size: 11px; background: #1f2937; color: var(--muted); border: 1px solid var(--border); padding: 2px 8px; border-radius: 999px; }
+    .privacy-pill { margin-left: auto; font-size: 11px; color: var(--green); border: 1px solid #2ea04322; background: #2ea04310; padding: 4px 10px; border-radius: 999px; }
+
+    /* ── Layout ── */
+    .container { max-width: 860px; margin: 0 auto; padding: 28px 20px; }
+    .section-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 10px; }
+
+    /* ── Step pills ── */
+    .steps { display: flex; gap: 0; margin-bottom: 24px; overflow: hidden; border-radius: 8px; border: 1px solid var(--border); }
+    .step { flex: 1; padding: 10px 8px; text-align: center; font-size: 12px; color: var(--muted); background: var(--surface); border-right: 1px solid var(--border); }
+    .step:last-child { border-right: none; }
+    .step.active { background: #161b22; color: var(--green); font-weight: 700; }
+    .step .num { font-size: 16px; font-weight: 800; display: block; }
+
+    /* ── Setup panel ── */
+    #setupPanel {}
+    .toggle-row { display: flex; gap: 10px; margin-bottom: 16px; }
+    .toggle-btn { flex: 1; padding: 12px 10px; background: var(--surface); border: 2px solid var(--border); border-radius: 8px; color: var(--muted); cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.15s; text-align: center; }
+    .toggle-btn.active { border-color: var(--green); color: var(--green); background: #0d2818; }
+    .toggle-btn em { display: block; font-style: normal; font-size: 11px; font-weight: 400; color: var(--muted); margin-top: 3px; }
+
+    .filming-tip { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin-bottom: 16px; font-size: 13px; color: var(--muted); line-height: 1.7; }
+    .filming-tip strong { color: var(--text); display: block; margin-bottom: 4px; }
+
+    /* ── Upload zone ── */
+    .upload-zone { border: 2px dashed var(--border); border-radius: 10px; padding: 44px 24px; text-align: center; cursor: pointer; transition: border-color 0.2s; background: var(--surface); }
+    .upload-zone:hover, .upload-zone.dragover { border-color: var(--green); }
+    .upload-zone .icon { font-size: 40px; margin-bottom: 10px; }
+    .upload-zone h2 { font-size: 17px; margin-bottom: 6px; }
+    .upload-zone p { font-size: 13px; color: var(--muted); }
+    #fileInput { display: none; }
+
+    /* ── Processing panel ── */
+    #processingPanel { display: none; }
+    .video-wrapper { position: relative; background: #000; border-radius: 10px; overflow: hidden; }
+    video { display: block; width: 100%; max-height: 440px; object-fit: contain; }
+    canvas#poseCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+    .progress-bar { height: 3px; background: var(--border); border-radius: 2px; margin: 10px 0; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, var(--green), var(--blue)); width: 0%; transition: width 0.25s; border-radius: 2px; }
+    .log-box { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; color: var(--green); min-height: 72px; max-height: 110px; overflow-y: auto; }
+    .log-box .ln { margin: 2px 0; }
+    .log-box .ln.warn { color: var(--yellow); }
+    .log-box .ln.err { color: var(--red); }
+    .analyze-btn { width: 100%; padding: 15px; background: var(--green); color: #000; border: none; border-radius: 8px; font-size: 15px; font-weight: 800; cursor: pointer; margin-top: 14px; transition: opacity 0.2s; }
+    .analyze-btn:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
+
+    /* ── Phase nudge ── */
+    .nudge-box { display: none; background: #1f1a0e; border: 1px solid #5a3e0a; border-radius: 8px; padding: 12px 14px; margin-top: 10px; font-size: 13px; color: var(--yellow); }
+
+    /* ── Report card ── */
+    #reportCard { display: none; margin-top: 28px; }
+    .rc-header { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 22px 24px; margin-bottom: 18px; display: flex; align-items: flex-start; gap: 18px; }
+    .overall-badge { width: 68px; height: 68px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 30px; font-weight: 900; }
+    .rc-meta h2 { font-size: 20px; font-weight: 700; }
+    .rc-meta p { font-size: 12px; color: var(--muted); margin-top: 3px; line-height: 1.6; }
+    .rc-meta .scope-pill { display: inline-block; margin-top: 6px; font-size: 11px; background: #161b22; border: 1px solid var(--border); border-radius: 4px; padding: 2px 8px; color: var(--muted); }
+
+    .phase-section { margin-bottom: 18px; }
+    .phase-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 8px; padding-left: 2px; }
+    .fault-grid { display: grid; gap: 10px; }
+
+    /* Graded card */
+    .fault-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; }
+    .fc-top { display: flex; align-items: center; gap: 12px; }
+    .grade-dot { width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 900; }
+    .g-A { background: #0d2818; color: #3fb950; border: 2px solid #3fb95044; }
+    .g-B { background: #1a2608; color: #7ee787; border: 2px solid #7ee78744; }
+    .g-C { background: #2a1e00; color: #d29922; border: 2px solid #d2992244; }
+    .g-D { background: #2d0f0f; color: #f85149; border: 2px solid #f8514944; }
+    .fc-name { font-size: 14px; font-weight: 700; }
+    .fc-label { font-size: 12px; color: var(--muted); margin-top: 1px; }
+    .fc-body { font-size: 13px; color: #c9d1d9; line-height: 1.6; margin-top: 10px; }
+    .fc-measure { font-family: monospace; font-size: 11px; color: var(--blue); background: #0d1529; border: 1px solid #1c2d4d; border-radius: 4px; padding: 6px 10px; margin-top: 8px; display: block; }
+
+    /* Flag cards */
+    .flag-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 18px; opacity: 0.75; }
+    .flag-tag { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+    .flag-club { color: var(--purple); }
+    .flag-view { color: var(--blue); }
+    .flag-quality { color: var(--yellow); }
+    .flag-card h4 { font-size: 13px; color: var(--text); }
+    .flag-card p { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
+
+    /* Prescribed fix */
+    .fix-card { background: #0d2818; border: 1px solid #2ea04333; border-radius: 10px; padding: 20px; margin-top: 18px; }
+    .fix-card h3 { color: var(--green); font-size: 15px; font-weight: 700; margin-bottom: 8px; }
+    .fix-card .fault-name { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+    .fix-card .drill { font-size: 13px; color: #a5d6a7; line-height: 1.7; margin-top: 8px; background: #09200f; border-radius: 6px; padding: 12px; }
+
+    /* Phase debug */
+    .phase-debug { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-top: 18px; }
+    .phase-debug h4 { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 12px; }
+    .phase-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+    .phase-item { background: #0d1117; border: 1px solid var(--border); border-radius: 6px; padding: 8px; text-align: center; }
+    .pi-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .pi-value { font-size: 16px; font-weight: 700; color: var(--blue); margin: 3px 0; }
+    .pi-sub { font-size: 10px; color: var(--muted); }
+
+    /* Summary bar */
+    .summary-bar { display: flex; gap: 8px; margin-top: 18px; flex-wrap: wrap; }
+    .sb-item { flex: 1; min-width: 70px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px; text-align: center; }
+    .sb-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .sb-value { font-size: 22px; font-weight: 900; margin-top: 2px; }
+
+    /* Action buttons */
+    .action-row { display: flex; gap: 10px; margin-top: 18px; }
+    .btn-secondary { flex: 1; padding: 13px; background: transparent; color: var(--green); border: 2px solid var(--green); border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; }
+    .btn-export { flex: 1; padding: 13px; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
+
+    .disclaimer { font-size: 11px; color: #484f58; text-align: center; margin-top: 24px; line-height: 1.7; }
+  </style>
+</head>
+<body>
+
+<header>
+  <span class="logo">⛳ Golf Swing Coach</span>
+  <span class="badge">Analysis PoC v2</span>
+  <span class="badge">Face-On View · 9 Checkpoints</span>
+  <span class="privacy-pill">🔒 Video stays on this device</span>
+</header>
+
+<div class="container">
+
+  <div class="steps" id="steps">
+    <div class="step active" id="step1"><span class="num">1</span>Setup</div>
+    <div class="step" id="step2"><span class="num">2</span>Upload</div>
+    <div class="step" id="step3"><span class="num">3</span>Analyse</div>
+    <div class="step" id="step4"><span class="num">4</span>Report</div>
+  </div>
+
+  <!-- ─── Setup panel ─── -->
+  <div id="setupPanel">
+
+    <div class="section-title" style="margin-top:4px;">Camera view</div>
+    <div class="toggle-row">
+      <button class="toggle-btn active" id="btnFaceOn" onclick="selectView('face-on')">
+        Face-On <em>Camera faces your chest — 9 checkpoints graded</em>
+      </button>
+      <button class="toggle-btn" id="btnDTL" onclick="selectView('dtl')" style="opacity:0.5;cursor:not-allowed;" title="Down-the-line depends on club tracking — v2">
+        Down-the-Line <em>Coming in v2 — club & shaft tracking required</em>
+      </button>
+    </div>
+
+    <div class="section-title">Handedness</div>
+    <div class="toggle-row">
+      <button class="toggle-btn active" id="btnRH" onclick="selectHand('RH')">Right-handed</button>
+      <button class="toggle-btn" id="btnLH" onclick="selectHand('LH')">Left-handed</button>
+    </div>
+
+    <div class="filming-tip" id="filmingTip">
+      <strong>📹 How to film for Face-On</strong>
+      Camera at hip height · Placed directly in front of you (facing your chest) · ~10 ft / 3 m away · Full body in frame including hands at the top · Record the full swing from address through follow-through · Minimum 30 fps · Good daylight or bright indoor light.
+    </div>
+
+    <div class="section-title">Upload your swing video</div>
+    <div class="upload-zone" id="uploadZone"
+         onclick="document.getElementById('fileInput').click()"
+         ondragover="event.preventDefault(); this.classList.add('dragover')"
+         ondragleave="this.classList.remove('dragover')"
+         ondrop="handleDrop(event)">
+      <div class="icon">🎥</div>
+      <h2>Drop video here or click to browse</h2>
+      <p>MP4 · MOV · WebM — max 200 MB</p>
+      <p style="margin-top:6px;font-size:11px;color:#484f58;">Raw video never leaves this device. Only anonymous body-position numbers are used for grading.</p>
+    </div>
+    <input type="file" id="fileInput" accept="video/*" onchange="loadVideo(this.files[0])" />
+  </div>
+
+  <!-- ─── Processing panel ─── -->
+  <div id="processingPanel" style="margin-top:0;">
+    <div class="video-wrapper">
+      <video id="swingVideo" playsinline muted></video>
+      <canvas id="poseCanvas"></canvas>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+    <div class="log-box" id="logBox"></div>
+    <div class="nudge-box" id="nudgeBox">
+      ⚠ Phase detection confidence is low — results may be less accurate. Check that the full body is visible and the swing is face-on.
+    </div>
+    <button class="analyze-btn" id="analyzeBtn" onclick="runAnalysis()" disabled>Analysing — please wait…</button>
+  </div>
+
+  <!-- ─── Report card ─── -->
+  <div id="reportCard"></div>
+
+  <p class="disclaimer">
+    v1 grades body mechanics from a face-on 2D video only. No club, clubface, shaft-plane, or ball data is available in v1.<br>
+    Only anonymous body-position numbers are used for grading. Your video stays entirely on this device and is never uploaded.
+  </p>
+</div>
+
+<!-- MediaPipe Pose via CDN -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+
+<script>
+// ─── State ────────────────────────────────────────────────────────────────────
+let selectedView = 'face-on';
+let handedness = 'RH';
+let keypointSeries = [];
+let phases = null;
+
+// ─── MediaPipe landmark indices ────────────────────────────────────────────────
+const LM = {
+  NOSE: 0,
+  LEFT_SHOULDER: 11, RIGHT_SHOULDER: 12,
+  LEFT_ELBOW: 13,    RIGHT_ELBOW: 14,
+  LEFT_WRIST: 15,    RIGHT_WRIST: 16,
+  LEFT_HIP: 23,      RIGHT_HIP: 24,
+  LEFT_KNEE: 25,     RIGHT_KNEE: 26,
+  LEFT_ANKLE: 27,    RIGHT_ANKLE: 28,
+  LEFT_FOOT: 31,     RIGHT_FOOT: 32
+};
+
+// MediaPipe uses person's own left/right (anatomical).
+// In a front-facing video, person's LEFT appears on the RIGHT side of frame (higher x).
+// For RH golfer: lead side = person's LEFT = higher x in frame.
+// leadShoulder / trailShoulder helpers handle handedness.
+function leadLM(lmLeft, lmRight) { return handedness === 'RH' ? lmLeft : lmRight; }
+function trailLM(lmLeft, lmRight) { return handedness === 'RH' ? lmRight : lmLeft; }
+
+// ─── UI helpers ───────────────────────────────────────────────────────────────
+function selectView(v) {
+  selectedView = v;
+  document.getElementById('btnFaceOn').classList.toggle('active', v === 'face-on');
+  document.getElementById('btnDTL').classList.toggle('active', v === 'dtl');
+}
+function selectHand(h) {
+  handedness = h;
+  document.getElementById('btnRH').classList.toggle('active', h === 'RH');
+  document.getElementById('btnLH').classList.toggle('active', h === 'LH');
+}
+function setStep(n) {
+  [1,2,3,4].forEach(i => document.getElementById('step'+i).classList.toggle('active', i === n));
+}
+function log(msg, type = '') {
+  const el = document.getElementById('logBox');
+  const d = document.createElement('div');
+  d.className = 'ln ' + type;
+  d.textContent = '› ' + msg;
+  el.appendChild(d);
+  el.scrollTop = el.scrollHeight;
+}
+function setProgress(p) { document.getElementById('progressFill').style.width = p + '%'; }
+
+// ─── Video load ───────────────────────────────────────────────────────────────
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('uploadZone').classList.remove('dragover');
+  const f = e.dataTransfer.files[0];
+  if (f && f.type.startsWith('video/')) loadVideo(f);
+}
+function loadVideo(file) {
+  if (!file) return;
+  const video = document.getElementById('swingVideo');
+  video.src = URL.createObjectURL(file);
+  document.getElementById('setupPanel').style.display = 'none';
+  document.getElementById('processingPanel').style.display = 'block';
+  document.getElementById('reportCard').style.display = 'none';
+  document.getElementById('logBox').innerHTML = '';
+  keypointSeries = [];
+  setProgress(0);
+  setStep(2);
+  log('Loaded: ' + file.name);
+  log('Initialising MediaPipe Pose…');
+  document.getElementById('analyzeBtn').disabled = true;
+  document.getElementById('analyzeBtn').textContent = 'Analysing — please wait…';
+  video.onloadedmetadata = () => startPoseExtraction(video);
+}
+
+// ─── Pose extraction ──────────────────────────────────────────────────────────
+function startPoseExtraction(video) {
+  const canvas = document.getElementById('poseCanvas');
+  const ctx = canvas.getContext('2d');
+  const duration = video.duration;
+  let frameIdx = 0;
+  setStep(3);
+
+  const pose = new Pose({
+    locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${f}`
+  });
+  pose.setOptions({ modelComplexity: 1, smoothLandmarks: true,
+    enableSegmentation: false, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+
+  pose.onResults(results => {
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (results.poseLandmarks) {
+      drawSkeleton(ctx, results.poseLandmarks, canvas.width, canvas.height);
+      keypointSeries.push({
+        t: frameIdx,
+        landmarks: results.poseLandmarks.map(lm => ({ x: lm.x, y: lm.y, z: lm.z, v: lm.visibility }))
+      });
+    }
+    const pct = Math.min(98, Math.round((video.currentTime / duration) * 95));
+    setProgress(pct);
+    frameIdx++;
+    if (video.currentTime < duration - 0.04) {
+      video.currentTime += 1 / 30;
+    } else {
+      finishExtraction();
+    }
+  });
+
+  video.pause();
+  video.currentTime = 0;
+  video.onseeked = async () => { await pose.send({ image: video }); };
+  video.currentTime = 0.001;
+  log('Extracting keypoints from ' + Math.round(duration) + 's video at ~30fps…');
+}
+
+const SKELETON = [
+  [11,12],[11,13],[13,15],[12,14],[14,16],
+  [11,23],[12,24],[23,24],[23,25],[24,26],[25,27],[26,28],[27,31],[28,32]
+];
+function drawSkeleton(ctx, lms, w, h) {
+  ctx.strokeStyle = 'rgba(63,185,80,0.55)'; ctx.lineWidth = 2;
+  SKELETON.forEach(([a,b]) => {
+    const la = lms[a], lb = lms[b];
+    if (la.visibility > 0.3 && lb.visibility > 0.3) {
+      ctx.beginPath(); ctx.moveTo(la.x*w, la.y*h); ctx.lineTo(lb.x*w, lb.y*h); ctx.stroke();
+    }
+  });
+  lms.forEach(lm => {
+    if (lm.visibility > 0.3) {
+      ctx.beginPath(); ctx.arc(lm.x*w, lm.y*h, 4, 0, Math.PI*2);
+      ctx.fillStyle = '#3fb950'; ctx.fill();
+    }
+  });
+}
+function finishExtraction() {
+  setProgress(100);
+  const n = keypointSeries.length;
+  log('Keypoint extraction complete — ' + n + ' frames captured.');
+  if (n < 10) { log('Too few frames. Re-record with better lighting and full body in frame.', 'err'); return; }
+  document.getElementById('analyzeBtn').disabled = false;
+  document.getElementById('analyzeBtn').textContent = 'Show My Report Card ▶';
+}
+
+// ─── Geometry helpers ─────────────────────────────────────────────────────────
+function lm(frame, idx) { return frame.landmarks[idx]; }
+function mid(a, b) { return { x: (a.x+b.x)/2, y: (a.y+b.y)/2, v: Math.min(a.v, b.v) }; }
+function dist(a, b) { return Math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2); }
+function smooth(arr, w=3) {
+  return arr.map((v,i) => {
+    let s=0, c=0;
+    for (let j=Math.max(0,i-w); j<=Math.min(arr.length-1,i+w); j++) { s+=arr[j]; c++; }
+    return s/c;
+  });
+}
+function angleDeg(a, b, c) {
+  // Angle at vertex b between segments b→a and b→c
+  const v1 = { x: a.x-b.x, y: a.y-b.y };
+  const v2 = { x: c.x-b.x, y: c.y-b.y };
+  const dot = v1.x*v2.x + v1.y*v2.y;
+  const mag = Math.sqrt((v1.x**2+v1.y**2)) * Math.sqrt((v2.x**2+v2.y**2));
+  if (mag < 1e-6) return 180;
+  return Math.acos(Math.max(-1, Math.min(1, dot/mag))) * 180 / Math.PI;
+}
+
+// ─── Phase detection ──────────────────────────────────────────────────────────
+function detectPhases(series) {
+  const n = series.length;
+  const wristY = series.map(f => (lm(f,LM.LEFT_WRIST).y + lm(f,LM.RIGHT_WRIST).y) / 2);
+  const wYs = smooth(wristY, 4);
+
+  // Address: first ~8% of frames
+  const addressFrame = Math.max(0, Math.round(n * 0.05));
+
+  // Top: minimum wristY (highest hands) between 15% and 70%
+  const ts = Math.round(n*0.15), te = Math.round(n*0.70);
+  let topFrame = ts, minY = wYs[ts];
+  for (let i = ts; i <= te; i++) if (wYs[i] < minY) { minY = wYs[i]; topFrame = i; }
+
+  // Impact: peak downward velocity after top (max positive delta in y)
+  const is_ = topFrame+1, ie = Math.min(n-1, topFrame + Math.round((n-topFrame)*0.6));
+  let impactFrame = is_, maxVel = -Infinity;
+  for (let i = is_; i <= ie; i++) {
+    const vel = wYs[i] - wYs[i-1];
+    if (vel > maxVel) { maxVel = vel; impactFrame = i; }
+  }
+
+  // Follow-through: 40% of remaining frames after impact
+  const followFrame = Math.min(n-1, impactFrame + Math.round((n-impactFrame)*0.40));
+
+  const rise = wYs[addressFrame] - wYs[topFrame];   // should be >0 (wrists went up)
+  const drop = wYs[impactFrame] - wYs[topFrame];      // should be >0 (wrists came back down)
+  const confidence = (rise > 0.025 && drop > 0.015 && topFrame < impactFrame) ? 'high' : 'low';
+
+  return { address: addressFrame, top: topFrame, impact: impactFrame, follow: followFrame, confidence };
+}
+
+// ─── Grading helpers ──────────────────────────────────────────────────────────
+const GRADE_SCORE = { A:4, B:3, C:2, D:1 };
+function avgToGrade(s) {
+  if (s >= 3.5) return 'A'; if (s >= 2.5) return 'B'; if (s >= 1.5) return 'C'; return 'D';
+}
+function gradeColor(g) {
+  return { A:'#3fb950', B:'#7ee787', C:'#d29922', D:'#f85149' }[g] || '#8b949e';
+}
+function vis(frame, ...idxs) { return idxs.every(i => lm(frame,i).v > 0.4); }
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  9 Face-On Grading Rules
+// ─────────────────────────────────────────────────────────────────────────────
+
+// 1. BODY TILT — spine tilted slightly away from target (trail shoulder lower)
+function gradeBodyTilt(series, p) {
+  const f = series[p.address];
+  const lsh = lm(f, LM.LEFT_SHOULDER), rsh = lm(f, LM.RIGHT_SHOULDER);
+  if (!vis(f, LM.LEFT_SHOULDER, LM.RIGHT_SHOULDER)) return { grade:null, flag:'low_input_quality', detail:'Shoulders not visible at address' };
+  const sw = Math.abs(lsh.x - rsh.x);
+  if (sw < 0.05) return { grade:null, flag:'low_input_quality', detail:'Shoulder width too small — stand further from camera' };
+
+  // Trail shoulder = person's RIGHT (RH) or LEFT (LH).
+  // For RH: trail = RIGHT_SHOULDER (lm 12); lead = LEFT_SHOULDER (lm 11).
+  // In face-on, person's right shoulder (trail for RH) appears on LEFT of frame (lower x).
+  // Desired: trail shoulder.y > lead shoulder.y (trail is lower / more toward ground).
+  const trailSh = lm(f, handedness==='RH' ? LM.RIGHT_SHOULDER : LM.LEFT_SHOULDER);
+  const leadSh  = lm(f, handedness==='RH' ? LM.LEFT_SHOULDER  : LM.RIGHT_SHOULDER);
+  const tilt = (trailSh.y - leadSh.y) / sw; // positive = trail lower = correct
+
+  let grade, label, advice;
+  if (tilt >= 0.05 && tilt <= 0.20) {
+    grade='A'; label='Good spine tilt — trail shoulder correctly lower';
+    advice='Your spine is tilted away from the target at setup. This natural tilt promotes an upward angle of attack and helps you hit through the ball correctly.';
+  } else if ((tilt >= 0.02 && tilt < 0.05) || (tilt > 0.20 && tilt <= 0.32)) {
+    grade='B'; label='Acceptable tilt — small adjustment available';
+    advice = tilt < 0.05
+      ? 'Your shoulders are nearly level. Try feeling slightly more weight on your trail foot at address to increase tilt naturally.'
+      : 'The tilt is slightly exaggerated. Ensure you are not tilting from the waist — the tilt should come from gripping down with the trail hand, not leaning the torso.';
+  } else if (tilt > -0.03 && tilt < 0.02) {
+    grade='C'; label='Shoulders too level — spine tilt missing';
+    advice='Flat shoulders at setup can cause a steep downswing. Set up with your trail hand lower on the grip (naturally) and feel the trail shoulder drop slightly.';
+  } else if (tilt < -0.03) {
+    grade='D'; label='Reverse tilt — lead shoulder is lower';
+    advice='Your lead shoulder is lower than your trail shoulder. This "reverse tilt" typically causes a reverse pivot and slices. Place more weight on your trail foot at address.';
+  } else {
+    grade='C'; label='Excessive tilt';
+    advice='Too much shoulder tilt can cause fat shots and a very shallow attack angle. Moderate the tilt — trail shoulder slightly below lead is sufficient.';
+  }
+  return { grade, label, advice,
+    measurement: `Tilt ratio: ${tilt.toFixed(3)} (positive = trail shoulder lower)` };
+}
+
+// 2. STANCE WIDTH — feet ~shoulder-width apart
+function gradeStanceWidth(series, p) {
+  const f = series[p.address];
+  if (!vis(f, LM.LEFT_ANKLE, LM.RIGHT_ANKLE, LM.LEFT_SHOULDER, LM.RIGHT_SHOULDER))
+    return { grade:null, flag:'low_input_quality', detail:'Feet or shoulders not visible' };
+  const ankleW = Math.abs(lm(f,LM.LEFT_ANKLE).x - lm(f,LM.RIGHT_ANKLE).x);
+  const shouldW = Math.abs(lm(f,LM.LEFT_SHOULDER).x - lm(f,LM.RIGHT_SHOULDER).x);
+  const ratio = ankleW / shouldW;
+
+  let grade, label, advice;
+  if (ratio >= 0.85 && ratio <= 1.20) {
+    grade='A'; label='Stance width is ideal';
+    advice='Your feet are roughly shoulder-width — this gives an optimal balance of stability and hip rotation room.';
+  } else if ((ratio >= 0.70 && ratio < 0.85) || (ratio > 1.20 && ratio <= 1.45)) {
+    grade='B'; label='Stance width is slightly off';
+    advice = ratio < 0.85
+      ? 'Slightly narrow stance. Widen a touch to improve stability, especially with longer clubs.'
+      : 'Slightly wide stance. It can restrict hip rotation. Bring feet in slightly closer.';
+  } else if ((ratio >= 0.50 && ratio < 0.70) || (ratio > 1.45 && ratio <= 1.70)) {
+    grade='C'; label='Stance width noticeably off';
+    advice = ratio < 0.70
+      ? 'Narrow stance is reducing your stability and weight-shift range. Widen to shoulder-width.'
+      : 'Wide stance is blocking your hip rotation. Bring your feet in toward shoulder-width.';
+  } else {
+    grade='D'; label='Stance width significantly off';
+    advice = ratio < 0.50
+      ? 'Very narrow stance will cause balance problems throughout the swing. Stand at shoulder-width.'
+      : 'Very wide stance will prevent hip rotation and cause a reverse pivot. Narrow your stance to shoulder-width.';
+  }
+  return { grade, label, advice,
+    measurement: `Stance/shoulder ratio: ${ratio.toFixed(2)} (ideal: 0.85–1.20)` };
+}
+
+// 3. HIP SLIDE — lateral hip movement address to impact
+function gradeHipSlide(series, p) {
+  const af = series[p.address], imf = series[p.impact];
+  if (!vis(af,LM.LEFT_HIP,LM.RIGHT_HIP) || !vis(imf,LM.LEFT_HIP,LM.RIGHT_HIP))
+    return { grade:null, flag:'low_input_quality', detail:'Hips not clearly visible at address or impact' };
+  const sw = Math.abs(lm(af,LM.LEFT_SHOULDER).x - lm(af,LM.RIGHT_SHOULDER).x);
+  if (sw < 0.05) return { grade:null, flag:'low_input_quality', detail:'Shoulder width too small' };
+  const ha = (lm(af,LM.LEFT_HIP).x + lm(af,LM.RIGHT_HIP).x)/2;
+  const hi = (lm(imf,LM.LEFT_HIP).x + lm(imf,LM.RIGHT_HIP).x)/2;
+  const slide = Math.abs(hi-ha)/sw;
+
+  let grade, label, advice;
+  if (slide < 0.07) {
+    grade='A'; label='Excellent — hips rotating, not sliding';
+    advice='Your hips are turning through the ball rather than sliding laterally. This generates rotational power and promotes consistent contact.';
+  } else if (slide < 0.17) {
+    grade='B'; label='Good — minor lateral slide';
+    advice='Small hip slide detected. Focus on feeling your trail hip rotate behind you on the backswing, then the lead hip clearing through impact.';
+  } else if (slide < 0.30) {
+    grade='C'; label='Needs work — noticeable hip slide';
+    advice='Significant hip slide is reducing rotational power. Drill: place a chair at hip height to your lead side — practise rotating your hips into the chair rather than sliding along it.';
+  } else {
+    grade='D'; label='Poor — excessive hip slide';
+    advice='Excessive lateral hip movement is a major power leak and will cause inconsistent contact. Emphasise hip ROTATION over lateral movement. Half-swing drills with a wall behind you will help isolate the pattern.';
+  }
+  return { grade, label, advice,
+    measurement: `Hip slide: ${(slide*100).toFixed(1)}% of shoulder width (ideal: <7%)` };
+}
+
+// 4. HEAD SWAY — lateral head movement address to impact
+function gradeHeadSway(series, p) {
+  const af = series[p.address], imf = series[p.impact];
+  if (!vis(af,LM.NOSE) || !vis(imf,LM.NOSE))
+    return { grade:null, flag:'low_input_quality', detail:'Head (nose) not visible at address or impact' };
+  const sw = Math.abs(lm(af,LM.LEFT_SHOULDER).x - lm(af,LM.RIGHT_SHOULDER).x);
+  if (sw < 0.05) return { grade:null, flag:'low_input_quality', detail:'Shoulder width too small' };
+  const sway = Math.abs(lm(imf,LM.NOSE).x - lm(af,LM.NOSE).x)/sw;
+
+  let grade, label, advice;
+  if (sway < 0.08) {
+    grade='A'; label='Head very stable — excellent';
+    advice='Your head stays centred through the swing. This is the foundation of consistent contact — keep it up.';
+  } else if (sway < 0.18) {
+    grade='B'; label='Minor head sway';
+    advice='Small head movement present. Try focusing your eyes on a point 3 inches in front of the ball to anchor the head.';
+  } else if (sway < 0.32) {
+    grade='C'; label='Noticeable head sway';
+    advice='Significant lateral head movement is disrupting your arc. Drill: place a club shaft beside your ear at address — keep your head on the same side of the shaft through the entire swing.';
+  } else {
+    grade='D'; label='Excessive head sway';
+    advice='Excessive head movement will cause \"fat\" or \"thin\" shots due to arc inconsistency. Film in front of a wall and ensure your head stays in contact with (or very close to) the wall throughout.';
+  }
+  return { grade, label, advice,
+    measurement: `Head sway: ${(sway*100).toFixed(1)}% of shoulder width (ideal: <8%)` };
+}
+
+// 5. ARM WIDTH — lead arm straightness at top of backswing
+function gradeArmWidth(series, p) {
+  const tf = series[p.top];
+  // Lead arm = LEFT for RH, RIGHT for LH
+  const sh  = lm(tf, handedness==='RH' ? LM.LEFT_SHOULDER : LM.RIGHT_SHOULDER);
+  const el  = lm(tf, handedness==='RH' ? LM.LEFT_ELBOW    : LM.RIGHT_ELBOW);
+  const wr  = lm(tf, handedness==='RH' ? LM.LEFT_WRIST    : LM.RIGHT_WRIST);
+  if (sh.v < 0.35 || el.v < 0.35 || wr.v < 0.35)
+    return { grade:null, flag:'low_input_quality', detail:'Lead arm not visible at top of backswing' };
+  const angle = angleDeg(sh, el, wr);
+
+  let grade, label, advice;
+  if (angle >= 160) {
+    grade='A'; label='Lead arm straight — wide arc maintained';
+    advice='Your lead arm stays straight at the top of the backswing. This creates maximum arc width and promotes consistent power delivery.';
+  } else if (angle >= 145) {
+    grade='B'; label='Slight lead arm bend — acceptable';
+    advice='Minor lead arm bend is present. This is common and does not significantly affect most golfers. Focus on a firm but relaxed grip to reduce it further.';
+  } else if (angle >= 120) {
+    grade='C'; label='Lead arm bending noticeably — arc narrowing';
+    advice='The lead arm is bending considerably at the top, narrowing your arc and reducing power. Drill: practise taking the club back with a loose grip and feeling the lead arm stay long — think \"push the club away\" rather than \"lift\".';
+  } else {
+    grade='D'; label='Significant lead arm collapse';
+    advice='Significant lead arm collapse will cause inconsistent contact and power loss. This is often caused by over-swinging. Shorten your backswing until the lead arm stays straight, then gradually lengthen from there.';
+  }
+  return { grade, label, advice,
+    measurement: `Lead arm elbow angle at top: ${angle.toFixed(1)}° (ideal: ≥160°)` };
+}
+
+// 6. WEIGHT SHIFT — lateral hip shift from top to impact toward lead side
+function gradeWeightShift(series, p) {
+  const tf = series[p.top], imf = series[p.impact];
+  if (!vis(tf,LM.LEFT_HIP,LM.RIGHT_HIP) || !vis(imf,LM.LEFT_HIP,LM.RIGHT_HIP))
+    return { grade:null, flag:'low_input_quality', detail:'Hips not visible at top or impact' };
+  const sw = Math.abs(lm(series[p.address],LM.LEFT_SHOULDER).x - lm(series[p.address],LM.RIGHT_SHOULDER).x);
+  if (sw < 0.05) return { grade:null, flag:'low_input_quality', detail:'Shoulder width too small' };
+
+  const hipXT = (lm(tf,LM.LEFT_HIP).x + lm(tf,LM.RIGHT_HIP).x)/2;
+  const hipXI = (lm(imf,LM.LEFT_HIP).x + lm(imf,LM.RIGHT_HIP).x)/2;
+  // For RH: lead side = person's LEFT = higher x in frame. Shift should be positive (toward higher x).
+  // For LH: lead side = person's RIGHT = lower x. Shift should be negative.
+  const rawShift = hipXI - hipXT;
+  const shift = (handedness === 'RH' ? rawShift : -rawShift) / sw; // positive = toward lead
+
+  let grade, label, advice;
+  if (shift >= 0.04 && shift <= 0.18) {
+    grade='A'; label='Good weight shift to lead side';
+    advice='Your hips are loading correctly — shifting toward the lead side through impact. This is a sign of an athletic, power-generating move.';
+  } else if (shift > 0.18 && shift <= 0.30) {
+    grade='B'; label='Weight shifting — slightly lateral';
+    advice='Weight is shifting to the lead side, but the move is slightly more lateral slide than rotation. Focus on the lead hip rotating BACK and THROUGH rather than toward the target.';
+  } else if (shift > -0.04 && shift < 0.04) {
+    grade='C'; label='Minimal weight shift — hanging back';
+    advice='Very little lateral hip shift from top to impact. This "hanging back" restricts power and causes inconsistent contact. Focus on feeling pressure move to the lead foot at the start of the downswing.';
+  } else if (shift < -0.04) {
+    grade='D'; label='Reverse weight shift — hips moving trail-ward';
+    advice='Your hips are actually moving away from the target through impact — a reverse pivot. This is a fundamental fault causing loss of power and major directional issues. Focus on the drill: bump the lead hip toward the target immediately at the start of the downswing.';
+  } else {
+    grade='C'; label='Weight shift too lateral';
+    advice='The lateral shift is excessive and likely a sliding motion. Combine the shift with rotation — the lead hip should clear out of the way at impact, not just move sideways.';
+  }
+  return { grade, label, advice,
+    measurement: `Lead-side hip shift: ${(shift*100).toFixed(1)}% of shoulder width (ideal: +4% to +18%)` };
+}
+
+// 7. CHEST OPENING — shoulder line rotation at impact vs address
+function gradeChestOpening(series, p) {
+  const af = series[p.address], imf = series[p.impact];
+  if (!vis(af,LM.LEFT_SHOULDER,LM.RIGHT_SHOULDER) || !vis(imf,LM.LEFT_SHOULDER,LM.RIGHT_SHOULDER))
+    return { grade:null, flag:'low_input_quality', detail:'Shoulders not visible at address or impact' };
+  const swA = Math.abs(lm(af,LM.LEFT_SHOULDER).x - lm(af,LM.RIGHT_SHOULDER).x);
+  const swI = Math.abs(lm(imf,LM.LEFT_SHOULDER).x - lm(imf,LM.RIGHT_SHOULDER).x);
+  if (swA < 0.05) return { grade:null, flag:'low_input_quality', detail:'Shoulder width too small' };
+  // If chest opens (rotates toward target), apparent shoulder width decreases (foreshortening).
+  const ratio = swI / swA;
+
+  let grade, label, advice;
+  if (ratio <= 0.82) {
+    grade='A'; label='Chest well open at impact';
+    advice='Your chest is opening toward the target at impact. This is a sign of proper sequencing where the lower body leads and the upper body follows through.';
+  } else if (ratio <= 0.90) {
+    grade='B'; label='Good chest rotation at impact';
+    advice='Solid chest rotation through impact. To improve further, focus on clearing the lead hip earlier in the downswing to give the chest room to rotate.';
+  } else if (ratio <= 0.96) {
+    grade='C'; label='Chest partially blocked — not fully open';
+    advice='The chest is not fully open at impact, suggesting a block or a flip. Focus on leading with the lower body and letting the chest follow — practise holding the impact position with chest pointing toward the target.';
+  } else {
+    grade='D'; label='Chest still closed at impact';
+    advice='Your chest is still facing the ball at impact, causing the hands to flip and producing inconsistent contact and direction. Prioritise lower-body lead in the downswing — a common drill: practise impact position with a pause, ensuring the chest is open before the swing continues.';
+  }
+  return { grade, label, advice,
+    measurement: `Shoulder width ratio (impact/address): ${ratio.toFixed(3)} (ideal: ≤0.82)` };
+}
+
+// 8. EXTENSION — arms extending after impact (no chicken wing)
+function gradeExtension(series, p) {
+  const ff = series[p.follow];
+  // Check both elbows; grade the lead arm primarily
+  const leadSh = lm(ff, handedness==='RH' ? LM.LEFT_SHOULDER : LM.RIGHT_SHOULDER);
+  const leadEl = lm(ff, handedness==='RH' ? LM.LEFT_ELBOW    : LM.RIGHT_ELBOW);
+  const leadWr = lm(ff, handedness==='RH' ? LM.LEFT_WRIST    : LM.RIGHT_WRIST);
+  if (leadSh.v < 0.35 || leadEl.v < 0.35 || leadWr.v < 0.35)
+    return { grade:null, flag:'low_input_quality', detail:'Lead arm not visible at follow-through' };
+  const angle = angleDeg(leadSh, leadEl, leadWr);
+
+  let grade, label, advice;
+  if (angle >= 155) {
+    grade='A'; label='Full extension — no chicken wing';
+    advice='Your lead arm extends fully through impact and into the follow-through. This is a sign of a releasing, athletic swing.';
+  } else if (angle >= 135) {
+    grade='B'; label='Good extension — minor bend';
+    advice='Good extension with a minor bend. This is acceptable and often natural at higher swing speeds.';
+  } else if (angle >= 110) {
+    grade='C'; label='Chicken wing forming';
+    advice='The lead arm is bending (\"chicken wing\") through impact, which can cause blocked shots or scooping. Focus on the feeling of the lead arm staying long through the ball and the hands finishing high.';
+  } else {
+    grade='D'; label='Significant chicken wing';
+    advice='Significant lead arm collapse after impact is preventing a full release. Drill: practise with a towel tucked under your lead arm — if it falls before impact, you are losing extension. The arm should hold the towel through to the finish.';
+  }
+  return { grade, label, advice,
+    measurement: `Lead arm elbow angle at follow-through: ${angle.toFixed(1)}° (ideal: ≥155°)` };
+}
+
+// 9. TEMPO — backswing:downswing ratio
+function gradeTempo(series, p) {
+  const bs = p.top - p.address;
+  const ds = p.impact - p.top;
+  if (bs < 3 || ds < 1) return { grade:null, flag:'low_input_quality', detail:'Phase segments too short for tempo measurement' };
+  const ratio = bs / ds;
+
+  let grade, label, advice;
+  if (ratio >= 2.5 && ratio <= 4.5) {
+    grade='A'; label='Excellent tempo';
+    advice=`Tempo ratio of ${ratio.toFixed(1)}:1 is in the ideal range. This balanced rhythm lets the club load and deliver maximum energy at impact.`;
+  } else if ((ratio >= 2.0 && ratio < 2.5) || (ratio > 4.5 && ratio <= 6.0)) {
+    grade='B'; label='Good tempo — minor imbalance';
+    advice = ratio < 2.5
+      ? `Ratio of ${ratio.toFixed(1)}:1 — backswing slightly rushed. Count "one and two" on the way back.`
+      : `Ratio of ${ratio.toFixed(1)}:1 — backswing a little slow. Keep the takeaway deliberate but unhurried.`;
+  } else if ((ratio >= 1.5 && ratio < 2.0) || (ratio > 6.0 && ratio <= 8.0)) {
+    grade='C'; label='Tempo imbalance';
+    advice = ratio < 2.0
+      ? `Ratio of ${ratio.toFixed(1)}:1 — backswing is rushed. Slow it down: the downswing should feel faster by comparison, not the other way.`
+      : `Ratio of ${ratio.toFixed(1)}:1 — unusually slow/long backswing. Ensure you are not pausing or re-routing at the top.`;
+  } else {
+    grade='D'; label='Significant tempo problem';
+    advice=`Ratio of ${ratio.toFixed(1)}:1 is well outside the comfortable range. Use a metronome app at 72 BPM: club back on beat 1, top on beat 2, impact on beat 3.`;
+  }
+  return { grade, label, advice,
+    measurement: `Tempo ${ratio.toFixed(2)}:1 | Backswing: ${bs} frames | Downswing: ${ds} frames` };
+}
+
+// ─── Run full analysis ────────────────────────────────────────────────────────
+function runAnalysis() {
+  if (keypointSeries.length < 10) return;
+  log('Detecting swing phases…');
+  phases = detectPhases(keypointSeries);
+  log(`Address: ${phases.address} | Top: ${phases.top} | Impact: ${phases.impact} | Follow: ${phases.follow} [${phases.confidence} confidence]`,
+    phases.confidence === 'low' ? 'warn' : '');
+  if (phases.confidence === 'low') {
+    document.getElementById('nudgeBox').style.display = 'block';
+  }
+
+  log('Applying face-on rule set (9 checkpoints)…');
+  const results = {
+    bodyTilt:     gradeBodyTilt(keypointSeries, phases),
+    stanceWidth:  gradeStanceWidth(keypointSeries, phases),
+    hipSlide:     gradeHipSlide(keypointSeries, phases),
+    headSway:     gradeHeadSway(keypointSeries, phases),
+    armWidth:     gradeArmWidth(keypointSeries, phases),
+    weightShift:  gradeWeightShift(keypointSeries, phases),
+    chestOpening: gradeChestOpening(keypointSeries, phases),
+    extension:    gradeExtension(keypointSeries, phases),
+    tempo:        gradeTempo(keypointSeries, phases),
+  };
+
+  const scores = Object.values(results).map(r=>GRADE_SCORE[r.grade]).filter(s=>s!=null);
+  const overall = scores.length ? avgToGrade(scores.reduce((a,b)=>a+b)/scores.length) : null;
+
+  // Worst graded fault = prescribed fix
+  const graded = Object.entries(results)
+    .filter(([,r])=>r.grade)
+    .sort(([,a],[,b])=>(GRADE_SCORE[a.grade]||5)-(GRADE_SCORE[b.grade]||5));
+  const worst = graded[0];
+
+  log('Complete — rendering report card.');
+  renderReport(results, overall, worst, phases);
+  setStep(4);
+}
+
+// ─── Report card render ────────────────────────────────────────────────────────
+const FAULT_META = {
+  bodyTilt:     { name:'Body Tilt', desc:'Spine tilted slightly away from target at address' },
+  stanceWidth:  { name:'Stance Width', desc:'Feet roughly shoulder-width at address' },
+  hipSlide:     { name:'Sway vs Turn (Hip Slide)', desc:'Hips rotating over a stable trail leg vs sliding laterally' },
+  headSway:     { name:'Head Movement', desc:'Head staying within a small lateral box during the turn' },
+  armWidth:     { name:'Lead Arm Width', desc:'Lead arm straight for a wide arc vs collapsing at the top' },
+  weightShift:  { name:'The Weight Shift', desc:'Lateral pressure moving to the lead foot on the downswing' },
+  chestOpening: { name:'Chest Opening at Impact', desc:'Chest rotating open toward target at impact' },
+  extension:    { name:'Extension / No Chicken Wing', desc:'Both arms extending fully post-impact' },
+  tempo:        { name:'Tempo Ratio', desc:'Backswing duration vs downswing duration (hand-derived)' },
+};
+const PHASES_LAYOUT = [
+  { label:'Setup',             keys:['bodyTilt','stanceWidth'] },
+  { label:'Backswing',         keys:['hipSlide','headSway','armWidth'] },
+  { label:'Downswing & Impact',keys:['weightShift','chestOpening','extension'] },
+  { label:'Tempo',             keys:['tempo'] },
+];
+// Out-of-scope face-on checkpoints (club-dependent)
+const OUT_OF_SCOPE = [
+  { name:'Ball Position',           reason:'Requires ball detection — out of scope v1', phase:'Setup', flag:'out_club' },
+  { name:'Lag / Casting',           reason:'Requires shaft tracking — out of scope v1', phase:'Downswing & Impact', flag:'out_club' },
+  { name:'Impact Shaft Lean',       reason:'Requires shaft tracking — out of scope v1', phase:'Downswing & Impact', flag:'out_club' },
+];
+
+function faultCardHTML(key, result) {
+  const meta = FAULT_META[key];
+  if (!result.grade) {
+    const tagClass = result.flag === 'low_input_quality' ? 'flag-quality' : 'flag-view';
+    const tagText  = result.flag === 'low_input_quality' ? '⚠ Couldn\'t Read From This Video' : '🔭 Not Visible From This View';
+    const tagColor = result.flag === 'low_input_quality' ? '#d29922' : '#58a6ff';
+    return `<div class="flag-card">
+      <div class="flag-tag ${tagClass}">${tagText}</div>
+      <h4>${meta.name}</h4>
+      <p>${result.detail || meta.desc}</p>
+    </div>`;
+  }
+  const gc = gradeColor(result.grade);
+  return `<div class="fault-card">
+    <div class="fc-top">
+      <div class="grade-dot g-${result.grade}">${result.grade}</div>
+      <div><div class="fc-name">${meta.name}</div><div class="fc-label">${meta.desc}</div></div>
+    </div>
+    <div class="fc-body">${result.label}<br><span style="font-size:12px;color:#8b949e;">${result.advice}</span></div>
+    ${result.measurement ? `<code class="fc-measure">${result.measurement}</code>` : ''}
+  </div>`;
+}
+
+function outOfScopeHTML(item) {
+  return `<div class="flag-card">
+    <div class="flag-tag flag-club">🔧 Out of Scope — v1 Body-Only</div>
+    <h4>${item.name}</h4>
+    <p>${item.reason}</p>
+  </div>`;
+}
+
+function renderReport(results, overall, worst, phases) {
+  const now = new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+  const oc = overall ? gradeColor(overall) : '#8b949e';
+  const n = keypointSeries.length;
+
+  // Build phase sections
+  let phaseSections = '';
+  PHASES_LAYOUT.forEach(ph => {
+    const cards = ph.keys.map(k => faultCardHTML(k, results[k])).join('');
+    // Append out-of-scope items in the right phase
+    const oos = OUT_OF_SCOPE.filter(o => o.phase === ph.label).map(outOfScopeHTML).join('');
+    phaseSections += `
+      <div class="phase-section">
+        <div class="phase-label">${ph.label}</div>
+        <div class="fault-grid">${cards}${oos}</div>
+      </div>`;
+  });
+
+  // Summary bar
+  const gradedList = Object.entries(results).filter(([,r])=>r.grade);
+  const counts = {A:0,B:0,C:0,D:0};
+  gradedList.forEach(([,r])=>counts[r.grade]++);
+  const summaryBar = ['A','B','C','D'].map(g =>
+    `<div class="sb-item"><div class="sb-label">${g}</div><div class="sb-value" style="color:${gradeColor(g)}">${counts[g]}</div></div>`
+  ).join('');
+
+  // Prescribed fix
+  let fixHTML = '';
+  if (worst) {
+    const [key, r] = worst;
+    fixHTML = `<div class="fix-card">
+      <h3>🎯 Your One Thing to Work On</h3>
+      <div class="fault-name">${FAULT_META[key].name} — Grade ${r.grade}</div>
+      <p style="font-size:13px;color:#8b949e;">This is your biggest opportunity this session. Work on this before re-testing.</p>
+      <div class="drill">${r.advice}</div>
+    </div>`;
+  }
+
+  document.getElementById('reportCard').innerHTML = `
+    <div class="rc-header">
+      <div class="overall-badge" style="background:${oc}18;color:${oc};border:3px solid ${oc}44;">${overall||'?'}</div>
+      <div class="rc-meta">
+        <h2>Swing Report Card</h2>
+        <p>Face-on view · ${handedness === 'RH' ? 'Right-handed' : 'Left-handed'} · ${now} · ${n} frames analysed · ${gradedList.length} of 9 checkpoints graded</p>
+        <span class="scope-pill">Body mechanics only — no club, clubface, shaft-plane, or ball data in v1</span>
+      </div>
+    </div>
+
+    <div class="summary-bar">${summaryBar}<div class="sb-item" style="flex:2"><div class="sb-label">Overall</div><div class="sb-value" style="color:${oc}">${overall||'—'}</div></div></div>
+
+    ${phaseSections}
+    ${fixHTML}
+
+    <div class="phase-debug">
+      <h4>Phase Detection Debug</h4>
+      <div class="phase-row">
+        <div class="phase-item"><div class="pi-label">Address</div><div class="pi-value">${phases.address}</div><div class="pi-sub">${(phases.address/n*100).toFixed(0)}% in</div></div>
+        <div class="phase-item"><div class="pi-label">Top</div><div class="pi-value">${phases.top}</div><div class="pi-sub">${(phases.top/n*100).toFixed(0)}% in</div></div>
+        <div class="phase-item"><div class="pi-label">Impact</div><div class="pi-value">${phases.impact}</div><div class="pi-sub">${(phases.impact/n*100).toFixed(0)}% in</div></div>
+        <div class="phase-item"><div class="pi-label">Follow</div><div class="pi-value">${phases.follow}</div><div class="pi-sub">${(phases.follow/n*100).toFixed(0)}% in</div></div>
+        <div class="phase-item"><div class="pi-label">Confidence</div><div class="pi-value" style="color:${phases.confidence==='high'?'#3fb950':'#d29922'}">${phases.confidence}</div><div class="pi-sub">detection</div></div>
+      </div>
+    </div>
+
+    <div class="action-row">
+      <button class="btn-secondary" onclick="retestSwing()">📹 Analyse Another Swing</button>
+      <button class="btn-export" onclick="exportReport()">📋 Copy Report to Clipboard</button>
+    </div>
+  `;
+  document.getElementById('reportCard').style.display = 'block';
+  document.getElementById('reportCard').scrollIntoView({ behavior:'smooth' });
+}
+
+function retestSwing() {
+  document.getElementById('setupPanel').style.display = 'block';
+  document.getElementById('processingPanel').style.display = 'none';
+  document.getElementById('reportCard').style.display = 'none';
+  document.getElementById('logBox').innerHTML = '';
+  keypointSeries = [];
+  setProgress(0);
+  setStep(1);
+  document.getElementById('nudgeBox').style.display = 'none';
+  window.scrollTo({ top:0, behavior:'smooth' });
+}
+
+function exportReport() {
+  if (!phases) return;
+  const lines = ['Golf Swing Coach — Report Card', `Date: ${new Date().toLocaleDateString()}`, `View: Face-On | Handedness: ${handedness}`, ''];
+  // This is a stub for the PoC — full export to JSON in the real app
+  navigator.clipboard.writeText(lines.join('\n') + '\n[Full keypoint data available for export in v1 app]')
+    .then(() => alert('Report summary copied to clipboard.'))
+    .catch(() => alert('Copy failed — try right-clicking the page.'));
+}
+</script>
+</body>
+</html>
