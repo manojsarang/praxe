@@ -320,15 +320,24 @@ function startPoseExtraction(video) {
   let frameIdx = 0;
   let lastCapturedTime = -1;
   let poseReady = false;
-  let loopRunning = false;
-  const CAPTURE_INTERVAL = isMobile ? 1/15 : 1/24; // 15fps mobile, 24fps desktop
+  let finished = false;
+  const CAPTURE_INTERVAL = isMobile ? 1/15 : 1/24;
   setStep(3);
+
+  // Single exit point — guards against double-calling
+  function finish() {
+    if (finished) return;
+    finished = true;
+    video.pause();
+    clearInterval(stallGuard);
+    finishExtraction();
+  }
 
   const pose = new Pose({
     locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${f}`
   });
   pose.setOptions({
-    modelComplexity: isMobile ? 0 : 1,  // lighter model on mobile
+    modelComplexity: isMobile ? 0 : 1,
     smoothLandmarks: true,
     enableSegmentation: false,
     minDetectionConfidence: 0.5,
@@ -336,7 +345,8 @@ function startPoseExtraction(video) {
   });
 
   pose.onResults(results => {
-    canvas.width = video.videoWidth || 640;
+    if (finished) return;
+    canvas.width  = video.videoWidth  || 640;
     canvas.height = video.videoHeight || 480;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (results.poseLandmarks) {
@@ -351,20 +361,42 @@ function startPoseExtraction(video) {
     poseReady = true;
   });
 
-  // Warm up the model before starting playback
+  // Safety net 1 — stall guard: if frameIdx stops growing for 4 s, we have all the frames we'll get
+  let lastFrameCheck = 0;
+  const stallGuard = setInterval(() => {
+    if (finished) { clearInterval(stallGuard); return; }
+    if (frameIdx > 5 && frameIdx === lastFrameCheck) {
+      log('Stall detected — finishing extraction with ' + frameIdx + ' frames captured.', 'warn');
+      finish();
+    }
+    lastFrameCheck = frameIdx;
+  }, 4000);
+
+  // Safety net 2 — direct ended event (most reliable on iOS)
+  video.addEventListener('ended', finish, { once: true });
+
+  // Safety net 3 — if iOS pauses the video mid-way, resume it
+  video.addEventListener('pause', () => {
+    if (!finished && !video.ended && video.currentTime < duration - 0.1) {
+      video.play().catch(() => {});
+    }
+  });
+
   pose.initialize().then(() => {
     log('Extracting keypoints from ' + Math.round(duration) + 's video'
-      + (isMobile ? ' (mobile mode: 15fps, fast model)' : ' at ~24fps') + '…');
+      + (isMobile ? ' (mobile mode — 15fps, fast model)' : ' (~24fps)') + '…');
     poseReady = true;
 
-    // Play at reduced speed so rAF can keep up on slow devices
     video.playbackRate = isMobile ? 0.35 : 0.5;
-    video.play();
+    video.play().catch(e => {
+      log('Video play blocked: ' + e.message, 'warn');
+      log('Tap anywhere on the video then try again.', 'warn');
+    });
 
     const loop = async () => {
+      if (finished) return;
       if (video.ended || video.currentTime >= duration - 0.05) {
-        video.pause();
-        finishExtraction();
+        finish();
         return;
       }
       if (poseReady && video.currentTime - lastCapturedTime >= CAPTURE_INTERVAL) {
@@ -376,7 +408,7 @@ function startPoseExtraction(video) {
     };
     requestAnimationFrame(loop);
   }).catch(err => {
-    log('MediaPipe failed to load: ' + err.message, 'err');
+    log('MediaPipe failed to load: ' + (err.message || err), 'err');
     log('Check your internet connection and reload the page.', 'err');
   });
 
