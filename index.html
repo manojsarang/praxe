@@ -65,6 +65,15 @@
     /* ── Phase nudge ── */
     .nudge-box { display: none; background: #1f1a0e; border: 1px solid #5a3e0a; border-radius: 8px; padding: 12px 14px; margin-top: 10px; font-size: 13px; color: var(--yellow); }
 
+    /* ── View mismatch warning ── */
+    .view-warning { display: none; background: #1a0e0e; border: 2px solid var(--red); border-radius: 10px; padding: 20px; margin-top: 14px; }
+    .view-warning h3 { color: var(--red); font-size: 16px; font-weight: 800; margin-bottom: 8px; }
+    .view-warning p { font-size: 13px; color: #e6a0a0; line-height: 1.65; margin-bottom: 14px; }
+    .view-warning .vw-detail { font-family: monospace; font-size: 11px; color: #8b949e; background: #0d1117; border-radius: 4px; padding: 6px 10px; margin-bottom: 14px; display: block; }
+    .vw-actions { display: flex; gap: 10px; }
+    .vw-back { flex: 1; padding: 12px; background: transparent; color: var(--red); border: 2px solid var(--red); border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; }
+    .vw-anyway { flex: 1; padding: 12px; background: var(--surface); color: var(--muted); border: 1px solid var(--border); border-radius: 8px; font-size: 13px; cursor: pointer; }
+
     /* ── Report card ── */
     #reportCard { display: none; margin-top: 28px; }
     .rc-header { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 22px 24px; margin-bottom: 18px; display: flex; align-items: flex-start; gap: 18px; }
@@ -218,6 +227,16 @@
     <div class="log-box" id="logBox"></div>
     <div class="nudge-box" id="nudgeBox">
       ⚠ Phase detection confidence is low — results may be less accurate. Check that the full body is visible and the swing is face-on.
+    </div>
+    <div class="view-warning" id="viewWarning">
+      <h3>⚠ This looks like a Down-the-Line video</h3>
+      <p>You selected <strong>Face-On</strong>, but the body geometry in this video suggests the camera is positioned to the side of the golfer, not in front. Grading a down-the-line video with face-on rules will produce meaningless results.</p>
+      <code class="vw-detail" id="viewWarningDetail"></code>
+      <p style="font-size:12px;color:#8b949e;">Go back and re-film from directly in front of the golfer (camera at hip height, facing their chest). Or if you are certain this is face-on, you can analyse anyway — but treat the results with caution.</p>
+      <div class="vw-actions">
+        <button class="vw-back" onclick="retestSwing()">← Re-film Face-On</button>
+        <button class="vw-anyway" onclick="forceAnalysis()">Analyse anyway (unreliable)</button>
+      </div>
     </div>
     <button class="analyze-btn" id="analyzeBtn" onclick="runAnalysis()" disabled>Analysing — please wait…</button>
   </div>
@@ -441,6 +460,44 @@ function finishExtraction() {
   if (n < 10) { log('Too few frames. Re-record with better lighting and full body in frame.', 'err'); return; }
   document.getElementById('analyzeBtn').disabled = false;
   document.getElementById('analyzeBtn').textContent = 'Show My Report Card ▶';
+}
+
+// ─── View consistency check ───────────────────────────────────────────────────
+// Detects likely view mismatch by measuring apparent shoulder width and
+// left/right z-depth asymmetry across address frames.
+// Face-on: shoulders wide, z roughly symmetric.
+// Down-the-line: shoulders narrow, one shoulder much closer to camera.
+function checkViewConsistency(series) {
+  const sample = series.slice(0, Math.min(15, series.length));
+  let sumWidth = 0, sumZAsym = 0, sumVisAsym = 0, count = 0;
+
+  for (const f of sample) {
+    const ls = lm(f, LM.LEFT_SHOULDER), rs = lm(f, LM.RIGHT_SHOULDER);
+    if (ls.v < 0.4 || rs.v < 0.4) continue;
+    sumWidth   += Math.abs(ls.x - rs.x);
+    sumZAsym   += Math.abs(ls.z - rs.z);
+    sumVisAsym += Math.abs(ls.v - rs.v);
+    count++;
+  }
+  if (count === 0) return { ok: true };
+
+  const avgWidth   = sumWidth   / count;
+  const avgZAsym   = sumZAsym   / count;
+  const avgVisAsym = sumVisAsym / count;
+
+  // Flags that suggest a down-the-line video
+  const narrowShoulders = avgWidth   < 0.10;   // shoulders appear nearly stacked
+  const deepAsymmetry   = avgZAsym   > 0.18;   // one shoulder much closer to camera
+  const visAsymmetry    = avgVisAsym > 0.30;   // one shoulder much less visible
+
+  const dtlScore = [narrowShoulders, deepAsymmetry, visAsymmetry].filter(Boolean).length;
+  const likelyDTL = dtlScore >= 2;
+
+  return {
+    ok: !likelyDTL,
+    avgWidth, avgZAsym, avgVisAsym, dtlScore,
+    detail: `Apparent shoulder width: ${(avgWidth*100).toFixed(0)}% · Z asymmetry: ${avgZAsym.toFixed(2)} · Vis asymmetry: ${avgVisAsym.toFixed(2)}`
+  };
 }
 
 // ─── Geometry helpers ─────────────────────────────────────────────────────────
@@ -793,6 +850,30 @@ function gradeTempo(series, p) {
 // ─── Run full analysis ────────────────────────────────────────────────────────
 function runAnalysis() {
   if (keypointSeries.length < 10) return;
+
+  // Check that the video geometry matches the selected view
+  if (selectedView === 'face-on') {
+    const viewCheck = checkViewConsistency(keypointSeries);
+    if (!viewCheck.ok) {
+      log('View mismatch detected — video does not look face-on.', 'warn');
+      document.getElementById('viewWarningDetail').textContent = viewCheck.detail;
+      document.getElementById('viewWarning').style.display = 'block';
+      document.getElementById('analyzeBtn').style.display = 'none';
+      return;
+    }
+  }
+
+  runGrading();
+}
+
+function forceAnalysis() {
+  log('Proceeding despite view mismatch — results may be unreliable.', 'warn');
+  document.getElementById('viewWarning').style.display = 'none';
+  document.getElementById('analyzeBtn').style.display = 'none';
+  runGrading();
+}
+
+function runGrading() {
   log('Detecting swing phases…');
   phases = detectPhases(keypointSeries);
   log(`Address: ${phases.address} | Top: ${phases.top} | Impact: ${phases.impact} | Follow: ${phases.follow} [${phases.confidence} confidence]`,
